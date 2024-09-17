@@ -157,7 +157,7 @@ class Pendulum():
             frame = next(generator)
             if self.dense_frame_ticker % frame_density == 0:
                 if fps - (time.perf_counter() - tick) > 0:
-                    time.sleep(fps - (time.perf_counter() - tick))
+                    time.sleep(abs(fps - (time.perf_counter() - tick)))
                 tick = time.perf_counter()
                 print(f'rated_frame_generator iteration {rated_countr}: x_2={frame[0]}, y_2={frame[1]}')
                 rated_countr+=1

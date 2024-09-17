@@ -1,32 +1,128 @@
 <html>
   <link rel="stylesheet" href="{{ url_for('static', filename= 'styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=SUSE:wght@100..800&display=swap" rel="stylesheet">
 
   <h1></h1>
-  <p>This is all the output:</p>
- <ul id="output"></ul>
+
   <svg 
     class = "cartesian"
     width="1000" 
     height="1000" 
     viewBox="-2.5 -2.5 5 5"
     onload="makeDraggable(evt);
-            findPosition1()"
-     >
-    <g>
+            findPosition1();
+            unfadeClickAndDrag();">
+
+
+    <g
+    id="drag_indicator"
+    transform="translate(0.15,0)">
+    <path
+        style="fill:none;stroke:#000000;stroke-width:0.006;stroke-dasharray:0.0319999,0.01600002;stroke-dashoffset:0.0064;stroke-opacity:1"
+        d="M 0 -2 Q 0.5 -2 0.5 -1.5"
+        id="path1"
+        sodipodi:nodetypes="ccc" />
+    <path
+        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
+        d="M 0.5 -1.5 0.47 -1.54"
+        id="path2" />
+    <path
+        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
+        d="M 0.5 -1.5 0.53 -1.54"
+        id="path2-0" />
+    <text class = "drag_indicator_text" x = "0.5" y = "1.45" font-size="0.1" >click <tspan font-style='italic'  font-size="0.09" > and </tspan>  drag</text>
+    </g>
+       
+        
+    <g id = "tracer"></g> 
+
+    <g id="pause_button" visibility="hidden" class = "pause_button">
+        <rect id = 'button_background' x = "-2.1" y = "-2.17" height = "0.5" width = "0.35" class="button_background" rx = "0.02"/>
+        <rect x = "-2" y = "-2" height = "0.2" width = "0.05"/>
+        <rect x = "-1.9" y = "-2" height = "0.2" width = "0.05"/>
+        <text class = "pause_text" text-anchor = 'middle' x = "-1.925" y = "2.1" font-size="0.1" >pause</text>
+    </g>
+
+    <g id = "pendulum_parts">
     <circle id='fixed' class = 'circle' cx="0" cy="0" r="0.12" />  
     <line id = 'line1' class = 'line' x1 = "0" y1 = "0" x2 = "0" y2 = "-1"/>
     <circle id = 'weight1' class = 'circle' cx="0" cy="-1" r="0.12" /> 
     <line id = 'line2' class = 'line' x1 = "0" y1 = "-1" x2 = "0" y2 = "-2"/>
     <circle id = 'weight2' class = 'circle draggable' cx="0" cy="-2" r="0.12" /> 
-    </g>
+
   </svg>
 
   <script >
 
-    var output = document.getElementById('output');
+    var  svgns = "http://www.w3.org/2000/svg";
 
     var l1 = 1
     var l2 = 1
+
+    var requestMade = false
+    var pause = false
+    pauses = 0
+
+    function unfadeClickAndDrag() {
+        element = document.getElementById('drag_indicator')
+        var op = 0;  // initial opacity
+        element.style.opacity = op;
+
+        function inner(){
+            element.style.display = 'block';
+            var timer = setInterval(function () {
+                if (op >= 1){
+                    clearInterval(timer);
+                }
+                element.style.opacity = op;
+                element.style.filter = 'alpha(opacity=' + op * 100 + ")";
+                op += (op +0.1) * 0.1;
+            }, 40);
+          }
+          setTimeout(inner,1000)
+        }
+
+    
+    
+    function pauser() {
+        pause = true
+        pauses += 1
+        console.log('clicked')
+        var obj = document.getElementById('button_background');
+        obj.style.fill = "#b3b3b3"
+    } 
+
+    function unPauser() {
+        pause = false;
+        var obj = document.getElementById('button_background');
+        obj.style.fill = "white"
+
+    }
+
+    function pauseHover() {
+        var obj = document.getElementById('button_background');
+        if (pause === false){
+        obj.style.fill = '#f2f2f2'
+        }
+    }
+
+    function pauseUnHover() {
+        var obj = document.getElementById('button_background');
+        if (pause === false){
+             obj.style.fill = 'white';
+                             }
+                            }
+
+    function showPauseButton() {
+        document.getElementById('pause_button').style.visibility = 'visible';
+        var obj = document.getElementById('pause_button');
+        obj.addEventListener('mousedown',pauser)
+        obj.addEventListener('mouseover',pauseHover)
+        obj.addEventListener('mouseleave',pauseUnHover)
+
+    }
 
     function findPosition1(){
     
@@ -63,50 +159,95 @@
 
     }
 
-    function coordinateStream(){
+    function coordinateStream(evt){
 
-        // package up pendulum state as mouse released
-        var data = {l1:l1,
-                    l2:l2,
-                    x1:parseFloat(document.getElementById('weight1').getAttribute('cx')),
-                    y1:parseFloat(document.getElementById('weight1').getAttribute('cy')),
-                    x2:parseFloat(document.getElementById('weight2').getAttribute('cx')),
-                    y2:parseFloat(document.getElementById('weight2').getAttribute('cy'))
-        }
+        if (evt.target.classList.contains('draggable')) {
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', "{{ url_for('pages.stream_coordinates') }}");
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify(data))
+            if (requestMade === false) { // ensure only one request at a time
 
-        function processDataStream(){
-            var newPositions = xhr.responseText.split('\n')
-            if (newPositions.length > 1){
-                newPositions = newPositions.pop()
-                newPositions = JSON.parse(newPositions)
-                //console.log(newPositions)
-                console.log(newPositions['x_1'])
-                //console.log('something')
-                //var item = document.createElement('li');
-                //item.textContent = newPositions['x_1'];
-                //output.appendChild(item);
+                requestMade = true;
 
-                document.getElementById('line1').setAttribute('x2',newPositions['x_1'])
-                document.getElementById('line1').setAttribute('y2',newPositions['y_1'])
+                unPauser()
 
-                document.getElementById('line2').setAttribute('x1',newPositions['x_1'])
-                document.getElementById('line2').setAttribute('y1',newPositions['y_1'])
-                document.getElementById('line2').setAttribute('x2',newPositions['x_2'])
-                document.getElementById('line2').setAttribute('y2',newPositions['y_2'])
+                var x1 = parseFloat(document.getElementById('weight1').getAttribute('cx'));
+                var y1 = parseFloat(document.getElementById('weight1').getAttribute('cy'));
+                var x2 = parseFloat(document.getElementById('weight2').getAttribute('cx'));
+                var y2 = parseFloat(document.getElementById('weight2').getAttribute('cy'));
 
-                document.getElementById('weight1').setAttribute('cx',newPositions['x_1'])
-                document.getElementById('weight1').setAttribute('cy',newPositions['y_1'])
-
-                document.getElementById('weight2').setAttribute('cx',newPositions['x_2'])
-                document.getElementById('weight2').setAttribute('cy',newPositions['y_2'])
+                var x1_minus_1 = 0
+                var y1_minus_1 = 0
+                var x2_minus_1 = 0
+                var y2_minus_1 = 0
                 
-            }
+
+                // grab tracer element
+                var tracerGroup = document.getElementById("tracer")
+
+                // package up pendulum state as mouse released
+                var data = {l1:l1,
+                            l2:l2,
+                            x1:x1,
+                            y1:y1,
+                            x2:x2,
+                            y2:y2
+                }
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', "{{ url_for('pages.stream_coordinates') }}");
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify(data))
+
+                function processDataStream(){
+
+                    var newPositions = xhr.responseText.split('\n')
+
+                    if (newPositions.length > 1){
+
+                        // get streamed coordinated from Flask backend
+
+                        newPositions = newPositions.pop()
+                        newPositions = JSON.parse(newPositions)
+
+                        x1_plus = newPositions['x_1']
+                        y1_plus = newPositions['y_1']
+                        x2_plus = newPositions['x_2']
+                        y2_plus = newPositions['y_2']
+
+                        // update pendulum positions: 
+
+                        document.getElementById('line1').setAttribute('x2',x1_plus)
+                        document.getElementById('line1').setAttribute('y2',y1_plus)
+
+                        document.getElementById('line2').setAttribute('x1',x1_plus)
+                        document.getElementById('line2').setAttribute('y1',y1_plus)
+                        document.getElementById('line2').setAttribute('x2',x2_plus)
+                        document.getElementById('line2').setAttribute('y2',y2_plus)
+
+                        document.getElementById('weight1').setAttribute('cx',x1_plus)
+                        document.getElementById('weight1').setAttribute('cy',y1_plus)
+
+                        document.getElementById('weight2').setAttribute('cx',x2_plus)
+                        document.getElementById('weight2').setAttribute('cy',y2_plus)
+
+                        // add to tracer:
+
+                        var line = document.createElementNS(svgns,"line")
+                        line.setAttribute("class",`tracer${pauses}`)
+                        line.setAttribute("x1",x2)
+                        line.setAttribute("y1",y2)
+                        line.setAttribute("x2",x2_plus)
+                        line.setAttribute("y2",y2_plus)
             
+                        tracerGroup.appendChild(line)
+
+                        x1 = x1_plus
+                        y1 = y1_plus
+                        x2 = x2_plus
+                        y2 = y2_plus
+                        
+                    }
+            }
+        }
             
         
             
@@ -118,22 +259,25 @@
         var timer;
         timer = setInterval(function(){
             processDataStream();
-            if (xhr.readyState == XMLHttpRequest.DONE) {
-            clearInterval(timer);
+            if (pause == true) {
+                xhr.abort();
+                clearInterval(timer);
+                requestMade=false;
         }
         }, 4);
        
 
-        
         }
     
 
     function makeDraggable(evt) {
         var svg = evt.target;
+    
         svg.addEventListener('mousedown', startDrag);
         svg.addEventListener('mousemove', drag);
         svg.addEventListener('mouseup', endDrag);
         svg.addEventListener('mouseup', coordinateStream);
+        svg.addEventListener('mouseup',showPauseButton);
         svg.addEventListener('mouseleave', endDrag); // will cause issues with stream?
         var selectedElement = false;
 
@@ -150,6 +294,8 @@
 
                 evt.preventDefault();
 
+                destroyClickAndDragIndicator();
+
                 var coord = getMousePosition(evt);
                 var coord = stickToCircleEdge(coord) // in case mouse has strayed outside of bounds dictated by by pendulum arm lengths
 
@@ -161,6 +307,12 @@
                 findPosition1(); // update position of middle weight
             }
             }
+        
+        function destroyClickAndDragIndicator() {
+            document.getElementById('drag_indicator').style.display='none';
+        }
+
+            
 
         function endDrag(evt) {
         selectedElement = null;
