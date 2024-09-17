@@ -1,0 +1,218 @@
+<html>
+  <link rel="stylesheet" href="{{ url_for('static', filename= 'styles.css') }}">
+
+  <h1></h1>
+  <p>This is all the output:</p>
+ <ul id="output"></ul>
+  <svg 
+    class = "cartesian"
+    width="1000" 
+    height="1000" 
+    viewBox="-2.5 -2.5 5 5"
+    onload="makeDraggable(evt);
+            findPosition1()"
+     >
+    <g>
+    <circle id='fixed' class = 'circle' cx="0" cy="0" r="0.12" />  
+    <line id = 'line1' class = 'line' x1 = "0" y1 = "0" x2 = "0" y2 = "-1"/>
+    <circle id = 'weight1' class = 'circle' cx="0" cy="-1" r="0.12" /> 
+    <line id = 'line2' class = 'line' x1 = "0" y1 = "-1" x2 = "0" y2 = "-2"/>
+    <circle id = 'weight2' class = 'circle draggable' cx="0" cy="-2" r="0.12" /> 
+    </g>
+  </svg>
+
+  <script >
+
+    var output = document.getElementById('output');
+
+    var l1 = 1
+    var l2 = 1
+
+    function findPosition1(){
+    
+        const weight1 = document.getElementById('weight1')
+        const weight2 = document.getElementById('weight2')
+
+        var x2 = weight2.getAttribute('cx')
+        var y2 = weight2.getAttribute('cy')
+
+        var x1_i = (-Math.sqrt(-(y2**2) * (l1**4 - 2*l1**2*l2**2 - 2*l1**2*x2**2 - 2*l1**2*y2**2 + l2**4 - 2*l2**2*x2**2 - 2*l2**2*y2**2 + x2**4 + 2*x2**2*y2**2 + y2**4)) + l1**2*x2 - l2**2*x2 + x2**3 + x2*y2**2)/(2*(x2**2 + y2**2))
+        var x1_j = (Math.sqrt(-(y2**2) * (l1**4 - 2*l1**2*l2**2 - 2*l1**2*x2**2 - 2*l1**2*y2**2 + l2**4 - 2*l2**2*x2**2 - 2*l2**2*y2**2 + x2**4 + 2*x2**2*y2**2 + y2**4)) + l1**2*x2 - l2**2*x2 + x2**3 + x2*y2**2)/(2*(x2**2 + y2**2))
+
+        var y1_i = (x2*Math.sqrt(-(y2**2)*(l1**4 - 2*l1**2*l2**2 - 2*l1**2*x2**2 - 2*l1**2*y2**2 + l2**4 - 2*l2**2*x2**2 - 2*l2**2*y2**2 + x2**4 + 2*x2**2*y2**2 + y2**4)) + l1**2*y2**2 - l2**2*y2**2 + x2**2*y2**2 + y2**4)/(2*y2*(x2**2 + y2**2))
+        var y1_j = (x2*-Math.sqrt(-(y2**2)*(l1**4 - 2*l1**2*l2**2 - 2*l1**2*x2**2 - 2*l1**2*y2**2 + l2**4 - 2*l2**2*x2**2 - 2*l2**2*y2**2 + x2**4 + 2*x2**2*y2**2 + y2**4)) + l1**2*y2**2 - l2**2*y2**2 + x2**2*y2**2 + y2**4)/(2*y2*(x2**2 + y2**2))
+
+        // can save some compute by delaying x calc to here
+        if (y1_i<y1_j) {
+            y1=y1_i
+            x1=x1_i
+        }
+        else {
+            y1=y1_j
+            x1=x1_j
+        }
+
+        weight1.setAttribute('cx',x1)
+        weight1.setAttribute('cy',y1)
+
+        document.getElementById('line1').setAttribute('x2',x1)
+        document.getElementById('line1').setAttribute('y2',y1)
+
+        document.getElementById('line2').setAttribute('x1',x1)
+        document.getElementById('line2').setAttribute('y1',y1)
+
+    }
+
+    function coordinateStream(){
+
+        // package up pendulum state as mouse released
+        var data = {l1:l1,
+                    l2:l2,
+                    x1:parseFloat(document.getElementById('weight1').getAttribute('cx')),
+                    y1:parseFloat(document.getElementById('weight1').getAttribute('cy')),
+                    x2:parseFloat(document.getElementById('weight2').getAttribute('cx')),
+                    y2:parseFloat(document.getElementById('weight2').getAttribute('cy'))
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', "{{ url_for('pages.stream_coordinates') }}");
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(data))
+
+        function processDataStream(){
+            var newPositions = xhr.responseText.split('\n')
+            if (newPositions.length > 1){
+                newPositions = newPositions.pop()
+                newPositions = JSON.parse(newPositions)
+                //console.log(newPositions)
+                console.log(newPositions['x_1'])
+                //console.log('something')
+                //var item = document.createElement('li');
+                //item.textContent = newPositions['x_1'];
+                //output.appendChild(item);
+
+                document.getElementById('line1').setAttribute('x2',newPositions['x_1'])
+                document.getElementById('line1').setAttribute('y2',newPositions['y_1'])
+
+                document.getElementById('line2').setAttribute('x1',newPositions['x_1'])
+                document.getElementById('line2').setAttribute('y1',newPositions['y_1'])
+                document.getElementById('line2').setAttribute('x2',newPositions['x_2'])
+                document.getElementById('line2').setAttribute('y2',newPositions['y_2'])
+
+                document.getElementById('weight1').setAttribute('cx',newPositions['x_1'])
+                document.getElementById('weight1').setAttribute('cy',newPositions['y_1'])
+
+                document.getElementById('weight2').setAttribute('cx',newPositions['x_2'])
+                document.getElementById('weight2').setAttribute('cy',newPositions['y_2'])
+                
+            }
+            
+            
+        
+            
+
+        }
+
+
+        
+        var timer;
+        timer = setInterval(function(){
+            processDataStream();
+            if (xhr.readyState == XMLHttpRequest.DONE) {
+            clearInterval(timer);
+        }
+        }, 4);
+       
+
+        
+        }
+    
+
+    function makeDraggable(evt) {
+        var svg = evt.target;
+        svg.addEventListener('mousedown', startDrag);
+        svg.addEventListener('mousemove', drag);
+        svg.addEventListener('mouseup', endDrag);
+        svg.addEventListener('mouseup', coordinateStream);
+        svg.addEventListener('mouseleave', endDrag); // will cause issues with stream?
+        var selectedElement = false;
+
+
+        function startDrag(evt) {
+            
+            if (evt.target.classList.contains('draggable')) {
+                selectedElement = evt.target;
+            }
+            }
+
+        function drag(evt) {
+            if (selectedElement) {
+
+                evt.preventDefault();
+
+                var coord = getMousePosition(evt);
+                var coord = stickToCircleEdge(coord) // in case mouse has strayed outside of bounds dictated by by pendulum arm lengths
+
+                selectedElement.setAttributeNS(null, "cx", coord.x);
+                selectedElement.setAttributeNS(null, "cy", coord.y);
+                document.getElementById('line2').setAttributeNS(null,"x2",coord.x)
+                document.getElementById('line2').setAttributeNS(null,"y2",coord.y)
+
+                findPosition1(); // update position of middle weight
+            }
+            }
+
+        function endDrag(evt) {
+        selectedElement = null;
+        }
+
+        function getMousePosition(evt) {
+        var CTM = svg.getScreenCTM();
+        return {
+            x: (evt.clientX - CTM.e) / CTM.a,
+            y: (evt.clientY - CTM.f) / CTM.d
+        };
+        }
+
+        function stickToCircleEdge(coord) {
+
+            if (((coord.x)**2 + (coord.y)**2 ) >= (l1+l2)**2) { // outside the circle dictated by pendulum arms
+                if (coord.x > 0 & coord.y > 0) {
+                        var x = Math.sqrt((l1+l2)**2 / (1+((coord.y) / (coord.x) )**2));
+                        var y = Math.sqrt((l1+l2)**2 / (1+((coord.x) / (coord.y)  )**2));
+                        //var x = (coord.x+50)*(l1+l2)/Math.sqrt((50+coord.x)**2+(50-coord.y)**2)
+                        //var y = (50-coord.y)*(l1+l2)/Math.sqrt((50+coord.x)**2+(50-coord.y)**2)
+                        //console.log('gulp')
+                    }
+                else if (coord.x > 0 & coord.y < 0){
+                    var x = Math.sqrt((l1+l2)**2 / (1+((coord.y) / (coord.x) )**2));
+                    var y = - Math.sqrt((l1+l2)**2 / (1+((coord.x) / (coord.y)  )**2));
+                }
+                else if (coord.x < 0 & coord.y > 0){
+                    var x = - Math.sqrt((l1+l2)**2 / (1+((coord.y) / (coord.x) )**2));
+                    var y = Math.sqrt((l1+l2)**2 / (1+((coord.x) / (coord.y)  )**2));
+                }
+                else {
+                        var x = -Math.sqrt((l1+l2)**2 / (1+((coord.y) / (coord.x) )**2));
+                        var y = -Math.sqrt((l1+l2)**2 / (1+((coord.x) / (coord.y)  )**2));
+                    }
+            }
+
+            else {
+                var x = coord.x
+                var y = coord.y
+            }
+
+            // to stop singularities on the edge of the circle:
+            return {x:x*0.9999,
+                    y:y*0.9999
+            }
+            }
+
+        
+        }
+
+
+  </script>
+
+</html>
