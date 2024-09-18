@@ -4,13 +4,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=SUSE:wght@100..800&display=swap" rel="stylesheet">
 
-  <h1></h1>
+  <h1 class = "title"> <span style="font-style: italic; font-weight: lighter;"> double</span> Pendulum <br>
+                       <span style="font-weight: lighter;font-size:2vw"> An exploration in chaotic dynamics</span> </h1>
+
 
   <svg 
     class = "cartesian"
     width="1000" 
     height="1000" 
-    viewBox="-2.5 -2.5 5 5"
+    viewBox="-2.5 -2.75 5 5"
     onload="makeDraggable(evt);
             findPosition1();
             unfadeClickAndDrag();">
@@ -20,20 +22,21 @@
     id="drag_indicator"
     transform="translate(0.15,0)">
     <path
-        style="fill:none;stroke:#000000;stroke-width:0.006;stroke-dasharray:0.0319999,0.01600002;stroke-dashoffset:0.0064;stroke-opacity:1"
+        style="fill:none;stroke:rgb(122, 121, 121);stroke-width:0.006;stroke-dasharray:0.0319999,0.01600002;stroke-dashoffset:0.0064;stroke-opacity:1"
         d="M 0 -2 Q 0.5 -2 0.5 -1.5"
         id="path1"
         sodipodi:nodetypes="ccc" />
     <path
-        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
+        style="fill:rgb(122, 121, 121);fill-opacity:1;stroke:rgb(122, 121, 121);stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
         d="M 0.5 -1.5 0.47 -1.54"
         id="path2" />
     <path
-        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
+        style="fill:rgb(122, 121, 121);fill-opacity:1;stroke:rgb(122, 121, 121);stroke-width:0.007;stroke-linecap:square;stroke-dasharray:none;stroke-dashoffset:0.612;stroke-opacity:1"
         d="M 0.5 -1.5 0.53 -1.54"
         id="path2-0" />
-    <text class = "drag_indicator_text" x = "0.5" y = "1.45" font-size="0.1" >click <tspan font-style='italic'  font-size="0.09" > and </tspan>  drag</text>
+    <text class = "drag_indicator_text" x = "0.5" y = "1.4" >click <tspan style='font-style:italic;font-weight:300;'> and </tspan>  drag</text>
     </g>
+    
        
         
     <g id = "tracer"></g> 
@@ -45,12 +48,14 @@
         <text class = "pause_text" text-anchor = 'middle' x = "-1.925" y = "2.1" font-size="0.1" >pause</text>
     </g>
 
-    <g id = "pendulum_parts">
-    <circle id='fixed' class = 'circle' cx="0" cy="0" r="0.12" />  
+    <g id = "pendulum_parts" class='pendulum_parts'>
     <line id = 'line1' class = 'line' x1 = "0" y1 = "0" x2 = "0" y2 = "-1"/>
-    <circle id = 'weight1' class = 'circle' cx="0" cy="-1" r="0.12" /> 
     <line id = 'line2' class = 'line' x1 = "0" y1 = "-1" x2 = "0" y2 = "-2"/>
-    <circle id = 'weight2' class = 'circle draggable' cx="0" cy="-2" r="0.12" /> 
+
+    <circle id='fixed' class = 'circle' cx="0" cy="0" r="0.1" />  
+    <circle id = 'weight1' class = 'circle' cx="0" cy="-1" r="0.1" /> 
+    <circle id = 'weight2' class = 'circle draggable' cx="0" cy="-2" r="0.1" /> 
+    </g>
 
   </svg>
 
@@ -89,10 +94,31 @@
     function pauser() {
         pause = true
         pauses += 1
-        console.log('clicked')
         var obj = document.getElementById('button_background');
-        obj.style.fill = "#b3b3b3"
+        obj.style.fill = "#b3b3b3";
+        showClickAndDragIndicator();
     } 
+
+            
+    function destroyClickAndDragIndicator() {
+            document.getElementById('drag_indicator').style.visibility='hidden';
+        }
+
+    function showClickAndDragIndicator() {
+        var ind = document.getElementById('drag_indicator')
+        ind.style.visibility='visible';
+        var x2 = weight2.getAttribute('cx')
+        var y2 = weight2.getAttribute('cy')
+
+        console.log(y2)
+
+        var x2_diff = parseFloat(x2)+0.15
+        var y2_diff = 2+parseFloat(y2)
+
+        transform = ind.setAttribute('transform',`translate(${x2_diff},${y2_diff})`)
+        unfadeClickAndDrag();
+    }
+
 
     function unPauser() {
         pause = false;
@@ -196,76 +222,75 @@
                 xhr.open('POST', "{{ url_for('pages.stream_coordinates') }}");
                 xhr.setRequestHeader('Content-Type', 'application/json');
                 xhr.send(JSON.stringify(data))
-
-                function processDataStream(){
-
-                    var newPositions = xhr.responseText.split('\n')
-
-                    if (newPositions.length > 1){
-
-                        // get streamed coordinated from Flask backend
-
-                        newPositions = newPositions.pop()
-                        newPositions = JSON.parse(newPositions)
-
-                        x1_plus = newPositions['x_1']
-                        y1_plus = newPositions['y_1']
-                        x2_plus = newPositions['x_2']
-                        y2_plus = newPositions['y_2']
-
-                        // update pendulum positions: 
-
-                        document.getElementById('line1').setAttribute('x2',x1_plus)
-                        document.getElementById('line1').setAttribute('y2',y1_plus)
-
-                        document.getElementById('line2').setAttribute('x1',x1_plus)
-                        document.getElementById('line2').setAttribute('y1',y1_plus)
-                        document.getElementById('line2').setAttribute('x2',x2_plus)
-                        document.getElementById('line2').setAttribute('y2',y2_plus)
-
-                        document.getElementById('weight1').setAttribute('cx',x1_plus)
-                        document.getElementById('weight1').setAttribute('cy',y1_plus)
-
-                        document.getElementById('weight2').setAttribute('cx',x2_plus)
-                        document.getElementById('weight2').setAttribute('cy',y2_plus)
-
-                        // add to tracer:
-
-                        var line = document.createElementNS(svgns,"line")
-                        line.setAttribute("class",`tracer${pauses}`)
-                        line.setAttribute("x1",x2)
-                        line.setAttribute("y1",y2)
-                        line.setAttribute("x2",x2_plus)
-                        line.setAttribute("y2",y2_plus)
-            
-                        tracerGroup.appendChild(line)
-
-                        x1 = x1_plus
-                        y1 = y1_plus
-                        x2 = x2_plus
-                        y2 = y2_plus
-                        
-                    }
             }
         }
-            
-        
-            
 
-        }
-
-
-        
         var timer;
         timer = setInterval(function(){
+            try {
             processDataStream();
+            }
+            catch (err){
+
+            }
             if (pause == true) {
                 xhr.abort();
                 clearInterval(timer);
                 requestMade=false;
         }
         }, 4);
-       
+
+        function processDataStream(){
+            
+            var newPositions = xhr.responseText.split('\n')
+
+            if (newPositions.length > 1){
+
+                // get streamed coordinated from Flask backend
+
+                newPositions = newPositions.pop()
+                newPositions = JSON.parse(newPositions)
+
+                x1_plus = newPositions['x_1']
+                y1_plus = newPositions['y_1']
+                x2_plus = newPositions['x_2']
+                y2_plus = newPositions['y_2']
+
+                // update pendulum positions: 
+
+                document.getElementById('line1').setAttribute('x2',x1_plus)
+                document.getElementById('line1').setAttribute('y2',y1_plus)
+
+                document.getElementById('line2').setAttribute('x1',x1_plus)
+                document.getElementById('line2').setAttribute('y1',y1_plus)
+                document.getElementById('line2').setAttribute('x2',x2_plus)
+                document.getElementById('line2').setAttribute('y2',y2_plus)
+
+                document.getElementById('weight1').setAttribute('cx',x1_plus)
+                document.getElementById('weight1').setAttribute('cy',y1_plus)
+
+                document.getElementById('weight2').setAttribute('cx',x2_plus)
+                document.getElementById('weight2').setAttribute('cy',y2_plus)
+
+                // add to tracer:
+
+                var line = document.createElementNS(svgns,"line")
+                line.setAttribute("class",`tracer${pauses}`)
+                line.setAttribute("x1",x2)
+                line.setAttribute("y1",y2)
+                line.setAttribute("x2",x2_plus)
+                line.setAttribute("y2",y2_plus)
+
+                tracerGroup.appendChild(line)
+
+                x1 = x1_plus
+                y1 = y1_plus
+                x2 = x2_plus
+                y2 = y2_plus
+                
+            }
+            }
+                
 
         }
     
@@ -307,10 +332,6 @@
                 findPosition1(); // update position of middle weight
             }
             }
-        
-        function destroyClickAndDragIndicator() {
-            document.getElementById('drag_indicator').style.display='none';
-        }
 
             
 
